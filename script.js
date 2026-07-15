@@ -11,7 +11,10 @@ const surpriseBox = document.getElementById('surpriseBox');
 if (surpriseBtn && surpriseBox) {
   surpriseBtn.addEventListener('click', () => {
     const randomMessage = surpriseMessages[Math.floor(Math.random() * surpriseMessages.length)];
+    surpriseBox.classList.remove('is-popping');
+    void surpriseBox.offsetWidth;
     surpriseBox.textContent = randomMessage;
+    surpriseBox.classList.add('is-popping');
   });
 }
 
@@ -73,6 +76,8 @@ const sliderPrev = document.getElementById('sliderPrev');
 const sliderNext = document.getElementById('sliderNext');
 let currentSlideIndex = 0;
 const visibleSlides = 5;
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let sliderInterval;
 
 function renderSlider() {
   if (!sliderTrack) return;
@@ -93,15 +98,27 @@ function updateSlider() {
 }
 
 function startAutoSlider() {
-  setInterval(() => {
+  if (prefersReducedMotion || sliderInterval) return;
+  sliderInterval = setInterval(() => {
     const maxIndex = Math.max(0, sliderImageNames.length - visibleSlides);
     currentSlideIndex = currentSlideIndex >= maxIndex ? 0 : currentSlideIndex + 1;
     updateSlider();
   }, 4200);
 }
 
+function stopAutoSlider() {
+  clearInterval(sliderInterval);
+  sliderInterval = null;
+}
+
 function setupScrollReveal() {
-  const elements = document.querySelectorAll('.animate-on-scroll');
+  const cards = document.querySelectorAll('.feature-card, .reason-card, .step-card, .panel-card, .timeline-card, .stack-item');
+  cards.forEach((card, index) => {
+    card.classList.add('animate-card');
+    card.style.setProperty('--reveal-delay', `${(index % 4) * 70}ms`);
+  });
+
+  const elements = document.querySelectorAll('.animate-on-scroll, .animate-card');
   if (!('IntersectionObserver' in window)) {
     elements.forEach((el) => el.classList.add('is-visible'));
     return;
@@ -116,17 +133,19 @@ function setupScrollReveal() {
         }
       });
     },
-    { threshold: 0.2 }
+    { threshold: 0.12 }
   );
 
   elements.forEach((el) => observer.observe(el));
 }
 
+setupScrollReveal();
+
 if (sliderPrev && sliderNext && sliderTrack) {
+  const sliderWrapper = sliderTrack.closest('.slider-wrapper');
   renderSlider();
   updateSlider();
   startAutoSlider();
-  setupScrollReveal();
 
   sliderPrev.addEventListener('click', () => {
     currentSlideIndex -= 1;
@@ -137,4 +156,9 @@ if (sliderPrev && sliderNext && sliderTrack) {
     currentSlideIndex += 1;
     updateSlider();
   });
+
+  if (sliderWrapper) {
+    sliderWrapper.addEventListener('mouseenter', stopAutoSlider);
+    sliderWrapper.addEventListener('mouseleave', startAutoSlider);
+  }
 }
